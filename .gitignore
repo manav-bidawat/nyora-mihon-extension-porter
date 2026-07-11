@@ -1,0 +1,6 @@
+.work/
+extension/build/
+extension/.gradle/
+repo/apk/*.apk
+*.log
+.DS_Store
