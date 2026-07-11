@@ -3,8 +3,10 @@
 # Build the fully-local Nyora Mihon extension (SFW + 18+) from the latest
 # nyora-shared. The extension bundles kotatsu-parsers-redo and parses on-device.
 #
-# It builds inside a Mihon fork checkout (which provides :source-api, :core:common
-# and the `mihonx` build plugins); our module is copied in as :nyora-local-extension.
+# This is an extension CREATOR, not a Mihon fork: it borrows the public Source
+# API + `mihonx` build plugins from OFFICIAL upstream Mihon at build time (a
+# throwaway checkout — nothing forked or maintained), copies our module in as
+# :nyora-local-extension, and links the parser engine + fixes to nyora-shared.
 #
 # Usage:  scripts/build.sh
 #         NYORA_SHARED_REF=<sha> MIHON_REF=<ref> scripts/build.sh
@@ -13,6 +15,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NYORA_SHARED_REF="${NYORA_SHARED_REF:-main}"
+MIHON_REPO="${MIHON_REPO:-https://github.com/mihonapp/mihon.git}"  # official upstream
 MIHON_REF="${MIHON_REF:-main}"
 PARSERS_REF="59c033ecfd"
 WORK="$ROOT/.work"
@@ -34,12 +37,13 @@ sed 's/^package .*/package eu.kanade.tachiyomi.extension.all.nyoralocal/' "$LIB"
   > "$ROOT/extension/src/main/kotlin/$PKG_DIR/LibApiHeaders.kt"
 ( cd "$WORK/nyora-shared" && git rev-parse HEAD ) > "$ROOT/extension/nyora-shared.ref"
 
-# 2) Fetch the Mihon fork (provides source-api + mihonx plugins).
-echo "── fetch Mihon fork"
-git clone --quiet --depth 1 --branch "$MIHON_REF" https://github.com/Hasan72341/mihon.git "$WORK/mihon"
+# 2) Fetch OFFICIAL upstream Mihon (throwaway) — only for its public Source API
+#    + mihonx build plugins. We build only :nyora-local-extension, never the app.
+echo "── fetch upstream Mihon (build-time API only)"
+git clone --quiet --depth 1 --branch "$MIHON_REF" "$MIHON_REPO" "$WORK/mihon"
 
-# 3) Wire our module into the fork.
-echo "── wire :nyora-local-extension into the fork"
+# 3) Wire our module into the throwaway checkout.
+echo "── wire :nyora-local-extension into the checkout"
 cp -R "$ROOT/extension" "$WORK/mihon/nyora-local-extension"
 printf '\ninclude(":nyora-local-extension")\n' >> "$WORK/mihon/settings.gradle.kts"
 

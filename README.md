@@ -16,11 +16,16 @@ The original build lived only in an ephemeral scratchpad and was lost; only the
 one-off porting scripts survived (kept in [`legacy-port-scripts/`](./legacy-port-scripts)
 for reference — do **not** run them, they were trial-and-error).
 
-This is the **usable, reproducible** replacement. Instead of re-porting raw
-kotatsu-parsers by hand, the build **fetches the parser glue + fixes from
-`nyora-shared`** (the same engine the hosted helper is built from), so the
-extension automatically inherits every fix — MangaLib headers, MangaEclipse URL
-absolutization, the parser-Interceptor binding, etc. — with no manual porting.
+This is the **usable, reproducible** replacement — an extension **creator**, not
+a Mihon fork:
+
+- It borrows the public Source API + `mihonx` build plugins from **official
+  upstream Mihon** at build time (a throwaway `git clone`; nothing forked or
+  maintained), and builds **only** `:nyora-local-extension` — never the app.
+- It **links the engine + fixes to `nyora-shared`** (the same stack the hosted
+  helper is built from), so the extension automatically inherits every fix —
+  MangaLib headers, MangaEclipse URL absolutization, the parser-Interceptor
+  binding, etc. — with no manual porting.
 
 ## Build inputs (all pinned / fetched)
 
