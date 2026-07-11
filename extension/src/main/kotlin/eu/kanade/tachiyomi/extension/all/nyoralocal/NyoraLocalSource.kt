@@ -38,7 +38,9 @@ class NyoraLocalSource(
     override val lang: String,
 ) : HttpSource() {
 
-    override val name: String = parserSource.title.ifBlank { parserSource.name }
+    override val name: String =
+        SourcePatches.TITLE_OVERRIDES[parserSource.name]   // rebranded relocated sources
+            ?: parserSource.title.ifBlank { parserSource.name }
     override val supportsLatest = true
 
     // Lazy: the factory must build ~900 sources cheaply. The parser + its OkHttp

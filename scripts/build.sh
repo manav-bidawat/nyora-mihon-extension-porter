@@ -35,6 +35,15 @@ git clone --quiet https://github.com/Hasan72341/nyora-shared.git "$WORK/nyora-sh
 LIB="$WORK/nyora-shared/src/jvmMain/kotlin/com/nyora/hasan72341/shared/net/LibApiHeaders.kt"
 sed 's/^package .*/package eu.kanade.tachiyomi.extension.all.nyoralocal/' "$LIB" \
   > "$ROOT/extension/src/main/kotlin/$PKG_DIR/LibApiHeaders.kt"
+
+# Also vendor SourcePatches (DOMAIN_OVERRIDES / TITLE_OVERRIDES / DEAD_SOURCES) —
+# the shared table of relocated/rebranded/dead sources. DOMAIN_OVERRIDES is what
+# makes sources that moved domains (i.e. whose old default 3xx-redirects to a new
+# host) resolve to their live domain via ConfigKey.Domain, mirroring every other
+# Nyora variant. Kept in sync from nyora-shared on each build.
+PATCHES="$WORK/nyora-shared/src/commonMain/kotlin/com/nyora/hasan72341/shared/SourcePatches.kt"
+sed 's/^package .*/package eu.kanade.tachiyomi.extension.all.nyoralocal/' "$PATCHES" \
+  > "$ROOT/extension/src/main/kotlin/$PKG_DIR/SourcePatches.kt"
 ( cd "$WORK/nyora-shared" && git rev-parse HEAD ) > "$ROOT/extension/nyora-shared.ref"
 
 # 2) Fetch OFFICIAL upstream Mihon (throwaway) — only for its public Source API
