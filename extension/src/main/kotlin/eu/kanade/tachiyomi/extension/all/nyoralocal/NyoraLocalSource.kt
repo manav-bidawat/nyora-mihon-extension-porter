@@ -1,22 +1,23 @@
 package eu.kanade.tachiyomi.extension.all.nyoralocal
 
-import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.Request
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.MangaState
 import org.koitharu.kotatsu.parsers.model.SortOrder
 import org.koitharu.kotatsu.parsers.util.toAbsoluteUrl
-import uy.kohesive.injekt.injectLazy
 import org.koitharu.kotatsu.parsers.model.Manga as LibManga
 import org.koitharu.kotatsu.parsers.model.MangaChapter as LibChapter
 import org.koitharu.kotatsu.parsers.model.MangaListFilter as LibFilter
 import org.koitharu.kotatsu.parsers.model.MangaPage as LibPage
+
+private const val PAGE_STEP = 20
 
 /**
  * One Tachiyomi source backed by an on-device kotatsu-parsers parser. Browsing,
@@ -32,7 +33,6 @@ class NyoraLocalSource(
     override val name: String = parserSource.title.ifBlank { parserSource.name }
     override val supportsLatest = true
 
-    private val network: NetworkHelper by injectLazy()
     private val context = NyoraContext(network.client)
     private val parser = context.newParserInstance(parserSource).also { context.bindParser(it) }
 
@@ -42,7 +42,7 @@ class NyoraLocalSource(
     // -- browse ------------------------------------------------------------
     private suspend fun list(page: Int, order: SortOrder, query: String?): MangasPage {
         val filter = if (query.isNullOrBlank()) LibFilter.EMPTY else LibFilter(query = query)
-        val entries = parser.getListPage(page, order, filter)
+        val entries = parser.getList((page - 1) * PAGE_STEP, order, filter)
         return MangasPage(entries.map { it.toSManga() }, hasNextPage = entries.isNotEmpty())
     }
 
@@ -51,15 +51,18 @@ class NyoraLocalSource(
     override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage =
         list(page, SortOrder.RELEVANCE, query)
 
-    // -- details / chapters ------------------------------------------------
-    override suspend fun getMangaDetails(manga: SManga): SManga {
+    // -- details + chapters (combined suspend API) -------------------------
+    override suspend fun getMangaUpdate(
+        manga: SManga,
+        chapters: List<SChapter>,
+        fetchDetails: Boolean,
+        fetchChapters: Boolean,
+    ): SMangaUpdate {
         val full = parser.getDetails(manga.toLib())
-        return full.toSManga()
-    }
-
-    override suspend fun getChapterList(manga: SManga): List<SChapter> {
-        val full = parser.getDetails(manga.toLib())
-        return (full.chapters ?: emptyList()).mapIndexed { i, c -> c.toSChapter(i) }
+        return SMangaUpdate(
+            manga = full.toSManga(),
+            chapters = (full.chapters ?: emptyList()).mapIndexed { i, c -> c.toSChapter(i) },
+        )
     }
 
     // -- pages -------------------------------------------------------------

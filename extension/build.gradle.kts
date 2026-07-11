@@ -23,12 +23,26 @@ android {
         versionName = "1.6.0"
         buildConfigField("String", "NYORA_NAME", "\"$nyoraName\"")
         buildConfigField("String", "NYORA_LIST", "\"$nyoraList\"")
-        buildConfigField("boolean", "NYORA_NSFW", nyoraNsfw != "0")
+        buildConfigField("boolean", "NYORA_NSFW", (nyoraNsfw != "0").toString())
         manifestPlaceholders["nyoraName"] = nyoraName
     }
 
     buildFeatures { buildConfig = true }
-    buildTypes { release { isMinifyEnabled = false } }
+
+    signingConfigs {
+        create("nyora") {
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("nyora")
+        }
+    }
 }
 
 dependencies {

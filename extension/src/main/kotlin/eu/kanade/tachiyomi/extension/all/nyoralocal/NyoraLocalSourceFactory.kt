@@ -15,7 +15,6 @@ class NyoraLocalSourceFactory : SourceFactory {
     override fun createSources(): List<Source> {
         val wantAdult = BuildConfig.NYORA_NSFW
         return MangaParserSource.entries
-            .filter { it != MangaParserSource.DUMMY }
             .filter { (it.contentType == ContentType.HENTAI) == wantAdult }
             .map { NyoraLocalSource(it, it.locale.ifBlank { "all" }) }
     }

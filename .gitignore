@@ -4,3 +4,5 @@ extension/.gradle/
 repo/apk/*.apk
 *.log
 .DS_Store
+extension/src/main/kotlin/eu/kanade/tachiyomi/extension/all/nyoralocal/LibApiHeaders.kt
+extension/nyora-shared.ref

@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.extension.all.nyoralocal
 
+import okhttp3.CookieJar
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -44,6 +45,8 @@ class NyoraContext(baseClient: OkHttpClient) : MangaLoaderContext() {
             instance
         }
     }
+
+    override val cookieJar: CookieJar = baseClient.cookieJar
 
     override val httpClient: OkHttpClient = baseClient.newBuilder()
         .addInterceptor(LibApiHeadersInterceptor)
