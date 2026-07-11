@@ -19,6 +19,14 @@ import org.koitharu.kotatsu.parsers.model.MangaPage as LibPage
 
 private const val PAGE_STEP = 20
 
+// Pull a chapter number out of a title. Ported verbatim from nyora-android
+// MangaChapterOrdering / MihonChapterNormalizer so ordering matches the app.
+private val CHAPTER_PATTERNS = listOf(
+    Regex("""(?:chapter|chap|ch\.?|episode|ep\.?)\s*[:#\-]?\s*(\d+(?:\.\d+)?)""", RegexOption.IGNORE_CASE),
+    Regex("""第\s*(\d+(?:\.\d+)?)\s*(?:话|話|章|回)""", RegexOption.IGNORE_CASE),
+    Regex("""(?:^|\s)(\d+(?:\.\d+)?)\s*(?:화|話|话|章|回)(?:\s|$)""", RegexOption.IGNORE_CASE),
+)
+
 /**
  * One Tachiyomi source backed by an on-device kotatsu-parsers parser. Browsing,
  * details, chapters and pages all run through the native parser; page image URLs
@@ -64,8 +72,55 @@ class NyoraLocalSource(
         val full = parser.getDetails(manga.toLib())
         return SMangaUpdate(
             manga = full.toSManga(),
-            chapters = (full.chapters ?: emptyList()).mapIndexed { i, c -> c.toSChapter(i) },
+            chapters = (full.chapters ?: emptyList()).toMihonChapters(),
         )
+    }
+
+    // Kotatsu parsers list chapters in whatever order the site uses (some
+    // oldest-first, some newest-first — it varies per source). Mihon sets
+    // sourceOrder = list index and its default "by source" sort treats index 0
+    // as the NEWEST chapter, so handing kotatsu's order through verbatim flips
+    // roughly half the sources (the asc/desc bug). Fix: sort into true
+    // chronological order from the chapter numbers (never trust array order),
+    // then give Mihon the reverse = newest-first. Mirrors nyora-android
+    // MangaChapterOrdering.toChronologicalChapterOrder() and nyora-web reader
+    // nextDelta(), both of which derive direction from chapter numbers.
+    private fun List<LibChapter>.toMihonChapters(): List<SChapter> {
+        if (isEmpty()) return emptyList()
+        val keys = mapIndexed { i, c -> ChKey(c, chapterNumberOf(c.title, c.number), i) }
+        val chronological = when {
+            keys.count { it.number != null } >= 2 -> keys.sortedWith(
+                compareBy(
+                    { it.ch.volume.takeIf { v -> v > 0 } ?: 0 },
+                    { it.number ?: Float.MAX_VALUE },
+                    { it.ch.uploadDate.takeIf { d -> d > 0L } ?: Long.MAX_VALUE },
+                    { it.index },
+                ),
+            )
+            keys.count { it.ch.uploadDate > 0L } >= 2 -> keys.sortedWith(
+                compareBy(
+                    { it.ch.uploadDate.takeIf { d -> d > 0L } ?: Long.MAX_VALUE },
+                    { it.index },
+                ),
+            )
+            else -> keys   // no reliable signal → keep kotatsu's own order
+        }
+        val newestFirst = chronological.asReversed()
+        return newestFirst.mapIndexed { i, k ->
+            k.ch.toSChapter(number = k.number ?: (newestFirst.size - i).toFloat())
+        }
+    }
+
+    private class ChKey(val ch: LibChapter, val number: Float?, val index: Int)
+
+    private fun chapterNumberOf(title: String?, parserNumber: Float): Float? =
+        title.parseChapterNumber() ?: parserNumber.takeIf { it > 0f }
+
+    private fun String?.parseChapterNumber(): Float? {
+        val value = this?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        CHAPTER_PATTERNS.firstNotNullOfOrNull { it.find(value)?.groupValues?.getOrNull(1)?.toFloatOrNull() }
+            ?.let { return it }
+        return value.toFloatOrNull()
     }
 
     // -- pages -------------------------------------------------------------
@@ -108,13 +163,17 @@ class NyoraLocalSource(
         tags = emptySet(), state = null, authors = emptySet(), source = parserSource,
     )
 
-    private fun LibChapter.toSChapter(index: Int) = SChapter.create().also { c ->
+    private fun LibChapter.toSChapter(number: Float) = SChapter.create().also { c ->
         c.url = url
-        c.name = title ?: "Chapter ${number.takeIf { it > 0 } ?: (index + 1)}"
         c.chapter_number = number
+        c.name = title?.takeIf { it.isNotBlank() }
+            ?: if (number > 0f) "Chapter ${number.asChapterLabel()}" else "Chapter"
         c.scanlator = scanlator
         c.date_upload = uploadDate
     }
+
+    private fun Float.asChapterLabel(): String =
+        if (this % 1f == 0f) toInt().toString() else toString()
 
     // Tachiyomi HttpSource requires these; browsing goes through the parser above.
     override fun popularMangaRequest(page: Int): Request = throw UnsupportedOperationException()

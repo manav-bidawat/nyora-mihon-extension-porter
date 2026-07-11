@@ -16,8 +16,8 @@ import re
 import subprocess
 import sys
 
-VERSION = "1.6.1"
-VERSION_CODE = 2
+VERSION = "1.6.2"
+VERSION_CODE = 3
 WEBSITE = "https://github.com/Hasan72341/nyora-mihon"
 EXTS = [
     {"name": "Nyora-Sources",     "pkg": "eu.kanade.tachiyomi.extension.all.nyoralocal",   "nsfw": 0},
