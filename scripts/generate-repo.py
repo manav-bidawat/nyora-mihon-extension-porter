@@ -16,7 +16,8 @@ import re
 import subprocess
 import sys
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
+VERSION_CODE = 2
 WEBSITE = "https://github.com/Hasan72341/nyora-mihon"
 EXTS = [
     {"name": "Nyora-Sources",     "pkg": "eu.kanade.tachiyomi.extension.all.nyoralocal",   "nsfw": 0},
@@ -45,7 +46,7 @@ def main(repo, fingerprint=None):
             fingerprint = cert_fingerprint(os.path.join(repo, "apk", apk))
         index.append({
             "name": e["name"], "pkg": e["pkg"], "apk": apk,
-            "lang": "all", "code": 1, "version": VERSION,
+            "lang": "all", "code": VERSION_CODE, "version": VERSION,
             "nsfw": e["nsfw"], "sources": None,
         })
     with open(os.path.join(repo, "index.min.json"), "w") as f:

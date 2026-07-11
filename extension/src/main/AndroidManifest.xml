@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Marks this APK as a Mihon/Tachiyomi extension (ExtensionLoader requires
+         this feature, else the package is not recognised → "package not found"). -->
+    <uses-feature
+        android:name="tachiyomi.extension"
+        android:required="false" />
+
     <application>
+        <!-- Entry point: a SourceFactory producing one source per kotatsu parser. -->
         <meta-data
             android:name="tachiyomi.extension.class"
             android:value="eu.kanade.tachiyomi.extension.all.nyoralocal.NyoraLocalSourceFactory" />
+
         <meta-data
-            android:name="tachiyomi.extension.factory"
-            android:value="true" />
+            android:name="tachiyomix.name"
+            android:value="${nyoraName}" />
+
+        <!-- Required; must be 1.4 or 1.6 (ExtensionLoader.SUPPORTED_LIB_VERSIONS). -->
+        <meta-data
+            android:name="tachiyomix.extensionLib"
+            android:value="1.6" />
     </application>
 </manifest>

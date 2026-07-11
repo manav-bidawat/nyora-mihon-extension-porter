@@ -19,8 +19,8 @@ android {
 
     defaultConfig {
         applicationId = "eu.kanade.tachiyomi.extension.all.nyora$nyoraPkgSuffix"
-        versionCode = 1
-        versionName = "1.6.0"
+        versionCode = 2
+        versionName = "1.6.1"
         buildConfigField("String", "NYORA_NAME", "\"$nyoraName\"")
         buildConfigField("String", "NYORA_LIST", "\"$nyoraList\"")
         buildConfigField("boolean", "NYORA_NSFW", (nyoraNsfw != "0").toString())
