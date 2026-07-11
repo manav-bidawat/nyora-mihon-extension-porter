@@ -52,7 +52,7 @@ build_flavor() {  # <pkgSuffix> <name> <nsfw>
     local suffix="$1" name="$2" nsfw="$3"
     echo "── assemble $name  (nsfw=$nsfw)"
     ( cd "$WORK/mihon" && ./gradlew --quiet :nyora-local-extension:assembleRelease \
-        -PnyoraPkgSuffix="$suffix" -PnyoraName="$name" -PnyoraNsfw="$nsfw" -PparsersRef="$PARSERS_REF" )
+        -PnyoraPkgSuffix="$suffix" -PnyoraName="$name" -PnyoraNsfw="$nsfw" -PparsersRef="$PARSERS_REF" -PnyoraKeystore="$ROOT/signing/nyora.keystore" )
     cp "$WORK/mihon/nyora-local-extension/build/outputs/apk/release/nyora-local-extension-release.apk" \
        "$ROOT/repo/apk/eu.kanade.tachiyomi.extension.all.nyora${suffix}.apk"
 }

@@ -31,7 +31,10 @@ android {
 
     signingConfigs {
         create("nyora") {
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            // Stable signing key so extension UPDATES install without a reinstall.
+            // build.sh passes -PnyoraKeystore=<repo>/signing/nyora.keystore (kept
+            // locally, gitignored); falls back to the Android debug keystore.
+            storeFile = file(prop("nyoraKeystore", System.getProperty("user.home") + "/.android/debug.keystore"))
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
