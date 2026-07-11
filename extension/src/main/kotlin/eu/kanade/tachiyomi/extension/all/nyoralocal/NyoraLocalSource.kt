@@ -33,10 +33,13 @@ class NyoraLocalSource(
     override val name: String = parserSource.title.ifBlank { parserSource.name }
     override val supportsLatest = true
 
-    private val context = NyoraContext(network.client)
-    private val parser = context.newParserInstance(parserSource).also { context.bindParser(it) }
+    // Lazy: the factory must build ~900 sources cheaply. The parser + its OkHttp
+    // context are created only when a source is actually browsed — creating all
+    // of them up front is heavy and one bad parser would kill the whole list.
+    private val context by lazy { NyoraContext(network.client) }
+    private val parser by lazy { context.newParserInstance(parserSource).also { context.bindParser(it) } }
 
-    override val baseUrl: String = runCatching { "https://" + parser.domain }.getOrDefault("")
+    override val baseUrl = ""   // "open in browser" only; avoid touching the parser at list time
     override val client get() = context.httpClient
 
     // -- browse ------------------------------------------------------------
