@@ -2,8 +2,10 @@ package eu.kanade.tachiyomi.extension.all.nyoralocal
 
 import okhttp3.CookieJar
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.asResponseBody
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.koitharu.kotatsu.parsers.bitmap.Bitmap
 import org.koitharu.kotatsu.parsers.config.ConfigKey
@@ -107,19 +109,59 @@ class NyoraContext(baseClient: OkHttpClient) : MangaLoaderContext() {
         .addInterceptor(Interceptor { chain -> boundParser?.intercept(chain) ?: chain.proceed(chain.request()) })
         .build()
 
-    override fun getDefaultUserAgent(): String = NYORA_UA
+    // The device WebView's own User-Agent. Cloudflare ties cf_clearance to the UA
+    // that solved the challenge, and Mihon solves challenges in its WebView using
+    // this UA — so the parser MUST send the same UA or the clearance is rejected
+    // (that's why CF sources like MangaFire otherwise stay blocked). Obtained via
+    // ActivityThread reflection since the parser context has no android Context.
+    private val webViewUserAgent: String by lazy {
+        runCatching {
+            val app = Class.forName("android.app.ActivityThread")
+                .getMethod("currentApplication").invoke(null) as android.content.Context
+            // WebSettings.getDefaultUserAgent initialises the WebView provider, which
+            // must happen on the main thread — parser requests run on a background
+            // thread, so marshal onto the main looper and wait for the result.
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                android.webkit.WebSettings.getDefaultUserAgent(app)
+            } else {
+                val holder = arrayOfNulls<String>(1)
+                val latch = java.util.concurrent.CountDownLatch(1)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    holder[0] = runCatching { android.webkit.WebSettings.getDefaultUserAgent(app) }.getOrNull()
+                    latch.countDown()
+                }
+                latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                holder[0] ?: NYORA_UA
+            }
+        }.getOrDefault(NYORA_UA)
+    }
 
-    override fun getConfig(source: LibMangaSource): MangaSourceConfig = OverrideSourceConfig(source)
+    override fun getDefaultUserAgent(): String = webViewUserAgent
+
+    override fun getConfig(source: LibMangaSource): MangaSourceConfig =
+        OverrideSourceConfig(source, webViewUserAgent)
 
     @Deprecated("Provide a base url")
     override suspend fun evaluateJs(script: String): String? = null
 
     override suspend fun evaluateJs(baseUrl: String, script: String, timeout: Long): String? = null
 
-    override fun redrawImageResponse(response: Response, redraw: (image: Bitmap) -> Bitmap): Response = response
+    // Image descrambling — supported here because a Mihon extension runs on
+    // Android (unlike nyora-shared's headless JVM host). Sources like MangaFire
+    // serve each page as a shuffled grid and the parser reassembles it via
+    // createBitmap + drawBitmap; without this the pages come out scrambled.
+    override fun redrawImageResponse(response: Response, redraw: (image: Bitmap) -> Bitmap): Response {
+        val body = response.body ?: return response
+        val decoded = body.byteStream().use { android.graphics.BitmapFactory.decodeStream(it) }
+            ?: return response
+        val redrawn = redraw(BitmapWrapper.create(decoded)) as BitmapWrapper
+        val buffer = okio.Buffer()
+        redrawn.use { it.compressTo(buffer.outputStream()) }
+        val newBody = buffer.asResponseBody("image/jpeg".toMediaType())
+        return response.newBuilder().body(newBody).build()
+    }
 
-    override fun createBitmap(width: Int, height: Int): Bitmap =
-        throw UnsupportedOperationException("Bitmap descrambling is not supported in the local extension")
+    override fun createBitmap(width: Int, height: Int): Bitmap = BitmapWrapper.create(width, height)
 
     // Returns each ConfigKey's compiled-in default, EXCEPT ConfigKey.Domain: for a
     // source whose baked-in domain is dead and now redirects to a new host,
@@ -127,10 +169,15 @@ class NyoraContext(baseClient: OkHttpClient) : MangaLoaderContext() {
     // upstream MangaParserSource.name). This is what makes relocated/redirecting
     // sources work — the parser then requests, and absolutizes page URLs against,
     // the live domain. Mirrors nyora-shared / nyora-android SourcePatches wiring.
-    private class OverrideSourceConfig(private val source: LibMangaSource) : MangaSourceConfig {
+    private class OverrideSourceConfig(
+        private val source: LibMangaSource,
+        private val userAgent: String,
+    ) : MangaSourceConfig {
         @Suppress("UNCHECKED_CAST")
         override fun <T> get(key: ConfigKey<T>): T = when (key) {
             is ConfigKey.Domain -> (SourcePatches.DOMAIN_OVERRIDES[source.name] ?: key.defaultValue) as T
+            // Match the WebView UA so Cloudflare cf_clearance solved there is honored.
+            is ConfigKey.UserAgent -> userAgent as T
             else -> key.defaultValue
         }
     }

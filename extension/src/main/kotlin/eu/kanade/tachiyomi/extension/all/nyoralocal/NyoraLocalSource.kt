@@ -49,7 +49,11 @@ class NyoraLocalSource(
     private val context by lazy { NyoraContext(network.client) }
     private val parser by lazy { context.newParserInstance(parserSource).also { context.bindParser(it) } }
 
-    override val baseUrl = ""   // "open in browser" only; avoid touching the parser at list time
+    // The source's real site, so Mihon's "Open in WebView" / Cloudflare WebView
+    // solver navigates to the right host (a CF challenge is solved there and the
+    // cf_clearance lands in the shared cookie jar this client uses). Lazy so the
+    // parser is only built when the URL is actually needed, not at list time.
+    override val baseUrl by lazy { runCatching { "https://" + parser.domain }.getOrDefault("") }
     override val client get() = context.httpClient
 
     // -- browse ------------------------------------------------------------

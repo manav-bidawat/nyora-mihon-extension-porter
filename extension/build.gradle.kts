@@ -12,15 +12,15 @@ val nyoraPkgSuffix = prop("nyoraPkgSuffix", "local")          // local | local18
 val nyoraName = prop("nyoraName", "Nyora-Sources")
 val nyoraNsfw = prop("nyoraNsfw", "0")
 val nyoraList = prop("nyoraList", "sources-sfw.json")          // asset file baked in
-val parsersRef = prop("parsersRef", "59c033ecfd")
+val parsersRef = prop("parsersRef", "f287c414a6")
 
 android {
     namespace = "eu.kanade.tachiyomi.extension.all.nyoralocal"
 
     defaultConfig {
         applicationId = "eu.kanade.tachiyomi.extension.all.nyora$nyoraPkgSuffix"
-        versionCode = 5
-        versionName = "1.6.4"
+        versionCode = 7
+        versionName = "1.7.1"
         buildConfigField("String", "NYORA_NAME", "\"$nyoraName\"")
         buildConfigField("String", "NYORA_LIST", "\"$nyoraList\"")
         buildConfigField("boolean", "NYORA_NSFW", (nyoraNsfw != "0").toString())
