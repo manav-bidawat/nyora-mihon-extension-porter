@@ -14,9 +14,13 @@ import org.koitharu.kotatsu.parsers.model.MangaParserSource
 class NyoraLocalSourceFactory : SourceFactory {
     override fun createSources(): List<Source> {
         val wantAdult = BuildConfig.NYORA_NSFW
-        return MangaParserSource.entries
-            .filter { it.name !in SourcePatches.DEAD_SOURCES }   // hide dead-domain sources
+        val kotatsu = MangaParserSource.entries
+            .filter { it.name !in SourcePatches.DEAD_SOURCES }        // hide dead-domain sources
+            .filter { !it.name.startsWith("MANGAFIRE") }             // native override (new JSON API)
             .filter { (it.contentType == ContentType.HENTAI) == wantAdult }
             .mapNotNull { runCatching { NyoraLocalSource(it, it.locale.ifBlank { "all" }) }.getOrNull() }
+        // MangaFire moved to a new JSON-API site the kotatsu parser can't read;
+        // ship a native source per language (non-adult flavor only).
+        return kotatsu + if (wantAdult) emptyList() else MangaFireSource.all()
     }
 }
