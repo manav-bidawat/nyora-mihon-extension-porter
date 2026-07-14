@@ -70,4 +70,4 @@ build_flavor "local18" "Nyora-Sources 18+" 1
 
 # 5) Emit the Mihon repo index.
 python3 "$ROOT/scripts/generate-repo.py" "$ROOT/repo"
-echo "✔ done → $ROOT/repo  (push to Hasan72341/nyora-mihon)"
+echo "✔ done → $ROOT/repo  (push to Nyora-Manga/nyora-mihon)"

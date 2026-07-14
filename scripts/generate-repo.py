@@ -18,7 +18,7 @@ import sys
 
 VERSION = "1.7.3"
 VERSION_CODE = 9
-WEBSITE = "https://github.com/Hasan72341/nyora-mihon"
+WEBSITE = "https://github.com/Nyora-Manga/nyora-mihon"
 EXTS = [
     {"name": "Nyora-Sources",     "pkg": "eu.kanade.tachiyomi.extension.all.nyoralocal",   "nsfw": 0},
     {"name": "Nyora-Sources 18+", "pkg": "eu.kanade.tachiyomi.extension.all.nyoralocal18", "nsfw": 1},

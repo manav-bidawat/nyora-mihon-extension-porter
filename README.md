@@ -2,7 +2,7 @@
 
 Build pipeline for the **fully-local** Nyora Mihon/Tachiyomi extension — the one
 that bundles the kotatsu-parsers engine and parses **on-device** (no server),
-published to [`Hasan72341/nyora-mihon`](https://github.com/Hasan72341/nyora-mihon)
+published to [`Nyora-Manga/nyora-mihon`](https://github.com/Nyora-Manga/nyora-mihon)
 as two extensions:
 
 | Extension | pkg | nsfw | contents |
