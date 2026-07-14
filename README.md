@@ -30,7 +30,7 @@ a Mihon fork:
 ## Build inputs (all pinned / fetched)
 
 - **Engine:** `com.github.clquwu:kotatsu-parsers-redo:59c033ecfd` (Gradle dep — same ref as helper + android)
-- **Glue + fixes:** cloned from `Hasan72341/nyora-shared` at build time (`NYORA_SHARED_REF`, default `main`):
+- **Glue + fixes:** cloned from `Nyora-Manga/nyora-shared` at build time (`NYORA_SHARED_REF`, default `main`):
   `net/LibApiHeaders.kt`, `net/BrowserHeaders.kt`, `net/HelperNetworkSettings.kt`,
   `extension/KotatsuLoaderContext.kt`, `extension/KotatsuParserExtensionService.kt`, `extension/NativeParserCatalog.kt`
 - **Android bridge:** an on-device `MangaLoaderContext` (OkHttp + Jsoup; `evaluateJs`/Bitmap stubbed — Cloudflare/JS sources need a WebView, not yet wired) modelled on `nyora-android`.
