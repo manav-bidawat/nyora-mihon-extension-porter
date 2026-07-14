@@ -7,7 +7,12 @@
         android:name="tachiyomi.extension"
         android:required="false" />
 
-    <application>
+    <!-- Nyora-branded launcher icon: Mihon shows the extension's app icon for
+         every source it provides, so all Nyora sources display the Nyora logo. -->
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="${nyoraName}">
         <!-- Entry point: a SourceFactory producing one source per kotatsu parser. -->
         <meta-data
             android:name="tachiyomi.extension.class"

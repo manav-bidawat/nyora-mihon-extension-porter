@@ -26,6 +26,10 @@ object SourcePatches {
         "YUGEN_MANGAS_ES" to "visualikigai.com",
         "LEITORDEMANGA" to "leitordemangas.com",
         "LILYUMFANSUB" to "lilyumfansub.pro",
+        // NOTE (2026-07 health-probe triage): HIPERDEX/TOONILY_ME/POJOKMANGA/MANHWAX/MANHWADESU/
+        // MANHWALAND_INK/NEATMANGA all "moved" but rebuilt on a NEW site structure — a pure domain
+        // override 404s on the parser's expected paths / still returns empty. They need a parser
+        // (selector/API) rewrite, not a domain swap, so they are deliberately NOT listed here.
     )
 
     /// Display-name overrides for sources that rebranded along with their domain move.
@@ -34,6 +38,7 @@ object SourcePatches {
         "MANGATILKISI" to "Tilki Scans",
         "ISEKAISCAN_EU" to "IsekaiScan",
         "YUGEN_MANGAS_ES" to "Visual Ikigai",
+        "TOONILY_ME" to "ToonDex", // rebranded toonily.me → toondex.io (native ToonDexExtensionService)
     )
 
     val DEAD_SOURCES: Set<String> = setOf(

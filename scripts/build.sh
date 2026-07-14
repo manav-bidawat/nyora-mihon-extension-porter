@@ -30,7 +30,7 @@ rm -rf "$WORK"; mkdir -p "$WORK" "$ROOT/repo/apk" "$ROOT/repo/icon"
 #    parser-Interceptor binding + MangaEclipse absolutize are inlined in the
 #    bridge (NyoraContext / NyoraLocalSource), mirroring nyora-shared.
 echo "── vendor LibApiHeaders from nyora-shared"
-git clone --quiet https://github.com/Hasan72341/nyora-shared.git "$WORK/nyora-shared"
+git clone --quiet https://github.com/Nyora-Manga/nyora-shared.git "$WORK/nyora-shared"
 ( cd "$WORK/nyora-shared" && git checkout --quiet "$NYORA_SHARED_REF" 2>/dev/null || true )
 LIB="$WORK/nyora-shared/src/jvmMain/kotlin/com/nyora/hasan72341/shared/net/LibApiHeaders.kt"
 sed 's/^package .*/package eu.kanade.tachiyomi.extension.all.nyoralocal/' "$LIB" \

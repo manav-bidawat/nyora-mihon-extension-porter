@@ -9,3 +9,4 @@ extension/nyora-shared.ref
 
 # signing key — kept locally, never committed
 signing/*.keystore
+.work-publish/
