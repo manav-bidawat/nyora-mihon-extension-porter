@@ -17,11 +17,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NYORA_SHARED_REF="${NYORA_SHARED_REF:-main}"
 MIHON_REPO="${MIHON_REPO:-https://github.com/mihonapp/mihon.git}"  # official upstream
 MIHON_REF="${MIHON_REF:-main}"
-PARSERS_REF="dbd62fbd7c"
+# kotatsu-parsers ref: read from nyora-shared below so the extension's sources
+# ALWAYS match the web/helper (never a separate pin that drifts). This env var
+# is only a fallback if nyora-shared's build.gradle.kts can't be parsed.
+PARSERS_REF_FALLBACK="${PARSERS_REF:-59c033ecfd}"
 WORK="$ROOT/.work"
 PKG_DIR="eu/kanade/tachiyomi/extension/all/nyoralocal"
 
-echo "▶ nyora-mihon-local  (nyora-shared@$NYORA_SHARED_REF, mihon@$MIHON_REF, parsers@$PARSERS_REF)"
+echo "▶ nyora-mihon-local  (nyora-shared@$NYORA_SHARED_REF, mihon@$MIHON_REF)"
 rm -rf "$WORK"; mkdir -p "$WORK" "$ROOT/repo/apk" "$ROOT/repo/icon"
 
 # 1) Fetch nyora-shared and vendor the *Lib fix (LibApiHeaders) into the module,
@@ -32,6 +35,14 @@ rm -rf "$WORK"; mkdir -p "$WORK" "$ROOT/repo/apk" "$ROOT/repo/icon"
 echo "── vendor LibApiHeaders from nyora-shared"
 git clone --quiet https://github.com/Nyora-Manga/nyora-shared.git "$WORK/nyora-shared"
 ( cd "$WORK/nyora-shared" && git checkout --quiet "$NYORA_SHARED_REF" 2>/dev/null || true )
+
+# Pin the SAME kotatsu-parsers-redo ref nyora-shared (the web/helper) uses, so the
+# extension's ~900 sources match the web exactly — Asura & every source fix flow
+# through automatically on the next build, no manual bump.
+PARSERS_REF="$(grep -oE 'kotatsu-parsers-redo:[0-9a-f]+' "$WORK/nyora-shared/build.gradle.kts" | head -1 | cut -d: -f2)"
+PARSERS_REF="${PARSERS_REF:-$PARSERS_REF_FALLBACK}"
+echo "── parsers ref (from nyora-shared): $PARSERS_REF"
+
 LIB="$WORK/nyora-shared/src/jvmMain/kotlin/com/nyora/hasan72341/shared/net/LibApiHeaders.kt"
 sed 's/^package .*/package eu.kanade.tachiyomi.extension.all.nyoralocal/' "$LIB" \
   > "$ROOT/extension/src/main/kotlin/$PKG_DIR/LibApiHeaders.kt"

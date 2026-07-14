@@ -12,7 +12,7 @@ val nyoraPkgSuffix = prop("nyoraPkgSuffix", "local")          // local | local18
 val nyoraName = prop("nyoraName", "Nyora-Sources")
 val nyoraNsfw = prop("nyoraNsfw", "0")
 val nyoraList = prop("nyoraList", "sources-sfw.json")          // asset file baked in
-val parsersRef = prop("parsersRef", "dbd62fbd7c")
+val parsersRef = prop("parsersRef", "59c033ecfd")
 
 android {
     namespace = "eu.kanade.tachiyomi.extension.all.nyoralocal"
