@@ -25,10 +25,28 @@ EXTS = [
 ]
 
 
+def _find_apksigner():
+    """Locate apksigner across SDK layouts (Linux CI + macOS local + PATH)."""
+    import shutil
+    roots = [
+        os.environ.get("ANDROID_HOME"),
+        os.environ.get("ANDROID_SDK_ROOT"),
+        os.path.expanduser("~/Library/Android/sdk"),  # macOS local dev
+        os.path.expanduser("~/Android/Sdk"),
+    ]
+    for root in filter(None, roots):
+        cands = sorted(glob.glob(os.path.join(root, "build-tools", "*", "apksigner")))
+        if cands:
+            return cands[-1]
+    onpath = shutil.which("apksigner")
+    if onpath:
+        return onpath
+    raise FileNotFoundError("apksigner not found (set ANDROID_HOME or install build-tools)")
+
+
 def cert_fingerprint(apk):
     """SHA-256 of the APK signing cert, lowercase hex (Mihon's fingerprint form)."""
-    apksigner = sorted(glob.glob(os.path.expanduser(
-        "~/Library/Android/sdk/build-tools/*/apksigner")))[-1]
+    apksigner = _find_apksigner()
     out = subprocess.run([apksigner, "verify", "--print-certs", apk],
                          capture_output=True, text=True).stdout
     m = re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)", out)
