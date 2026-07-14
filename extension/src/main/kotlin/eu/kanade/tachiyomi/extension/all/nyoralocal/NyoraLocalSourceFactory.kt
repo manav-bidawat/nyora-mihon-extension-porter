@@ -14,16 +14,33 @@ import org.koitharu.kotatsu.parsers.model.MangaParserSource
 class NyoraLocalSourceFactory : SourceFactory {
     override fun createSources(): List<Source> {
         val wantAdult = BuildConfig.NYORA_NSFW
-        val kotatsu = MangaParserSource.entries
-            .filter { it.name !in SourcePatches.DEAD_SOURCES }        // hide dead-domain sources
-            .filter { !it.name.startsWith("MANGAFIRE") }             // native override (new JSON API)
-            .filter { it.name != "TOONILY_ME" }                     // native override (ToonDex, new JSON API)
-            .filter { (it.contentType == ContentType.HENTAI) == wantAdult }
-            .mapNotNull { runCatching { NyoraLocalSource(it, it.locale.ifBlank { "all" }) }.getOrNull() }
-        // Sources whose sites relaunched on new JSON APIs the kotatsu parsers
-        // can't read — shipped as native ports instead:
-        //   • MangaFire → per-language (non-adult flavor only)
-        //   • ToonDex (ex-Toonily.me → toontop.io) → single source, both flavors
-        return kotatsu + ToonDexSource() + if (wantAdult) emptyList() else MangaFireSource.all()
+
+        // FULLY resilient: Mihon aborts the ENTIRE extension (0 sources) if
+        // createSources throws, so EVERY per-source access — name/contentType/
+        // locale/constructor AND the native ports — is guarded. One bad parser
+        // must never take down the whole list.
+        val kotatsu = runCatching {
+            MangaParserSource.entries.mapNotNull { entry ->
+                runCatching {
+                    val name = entry.name
+                    when {
+                        name in SourcePatches.DEAD_SOURCES -> null            // dead-domain
+                        name.startsWith("MANGAFIRE") -> null                  // native override
+                        name == "TOONILY_ME" -> null                          // native override (ToonDex)
+                        (entry.contentType == ContentType.HENTAI) != wantAdult -> null
+                        else -> NyoraLocalSource(entry, entry.locale.ifBlank { "all" })
+                    }
+                }.getOrNull()
+            }
+        }.getOrDefault(emptyList())
+
+        // Native ports for sites that relaunched on new JSON APIs the kotatsu
+        // parsers can't read (also guarded so a construction failure can't abort).
+        val native = buildList {
+            runCatching { add(ToonDexSource()) }                              // ex-Toonily.me → toontop.io
+            if (!wantAdult) runCatching { addAll(MangaFireSource.all()) }     // per-language
+        }
+
+        return kotatsu + native
     }
 }
