@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NYORA_SHARED_REF="${NYORA_SHARED_REF:-main}"
 MIHON_REPO="${MIHON_REPO:-https://github.com/mihonapp/mihon.git}"  # official upstream
 MIHON_REF="${MIHON_REF:-main}"
-PARSERS_REF="f287c414a6"
+PARSERS_REF="dbd62fbd7c"
 WORK="$ROOT/.work"
 PKG_DIR="eu/kanade/tachiyomi/extension/all/nyoralocal"
 
