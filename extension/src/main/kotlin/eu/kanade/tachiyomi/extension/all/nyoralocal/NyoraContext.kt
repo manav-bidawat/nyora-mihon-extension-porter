@@ -116,11 +116,22 @@ class NyoraContext(baseClient: OkHttpClient) : MangaLoaderContext() {
     override val httpClient: OkHttpClient = baseClient.newBuilder()
         .followRedirects(true)
         .followSslRedirects(true)
-        // First: learn/apply moved-domain redirects, so the header interceptors
-        // below and the parser see the live host.
-        .addInterceptor(RedirectDomainMapper)
-        .addInterceptor(LibApiHeadersInterceptor)
-        .addInterceptor(Interceptor { chain -> boundParser?.intercept(chain) ?: chain.proceed(chain.request()) })
+        .apply {
+            // Mihon's CloudflareInterceptor (its in-app WebView captcha/CF solver) is
+            // the INNERMOST app interceptor on network.client. Our parser interceptors
+            // must sit OUTSIDE it — so the request reaching CF is already domain-rewritten
+            // + carries the parser's Site-Id/UA headers, and CF is the FIRST to see (and
+            // solve) a challenge response. Appending them would push them inside CF, which
+            // makes the WebView solve the wrong URL/headers → captcha never clears.
+            val chain = interceptors()
+            val cfIndex = chain.indexOfLast { it.javaClass.name.contains("Cloudflare", ignoreCase = true) }
+            val at = if (cfIndex >= 0) cfIndex else chain.size   // fall back to append if not found
+            val parserInterceptor = Interceptor { c -> boundParser?.intercept(c) ?: c.proceed(c.request()) }
+            // insert at the SAME index in reverse so final order = [Redirect, LibApi, parser, CF]
+            chain.add(at, parserInterceptor)
+            chain.add(at, LibApiHeadersInterceptor)
+            chain.add(at, RedirectDomainMapper)
+        }
         .build()
 
     // The device WebView's own User-Agent. Cloudflare ties cf_clearance to the UA
