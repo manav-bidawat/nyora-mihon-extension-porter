@@ -16,7 +16,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NYORA_SHARED_REF="${NYORA_SHARED_REF:-main}"
 MIHON_REPO="${MIHON_REPO:-https://github.com/mihonapp/mihon.git}"  # official upstream
-MIHON_REF="${MIHON_REF:-main}"
+MIHON_REF="${MIHON_REF:-v0.20.1}"
 # kotatsu-parsers ref: read from nyora-shared below so the extension's sources
 # ALWAYS match the web/helper (never a separate pin that drifts). This env var
 # is only a fallback if nyora-shared's build.gradle.kts can't be parsed.
