@@ -1,0 +1,69 @@
+name: Deploy → nyora-mihon
+
+# Pushing to the `deploy` branch builds both extension flavors from source
+# (build.sh clones nyora-shared for the vendored glue + upstream Mihon for the
+# build API, then assembles + signs the APKs) and publishes the result to the
+# Nyora-Manga/nyora-mihon extension-store repo that Mihon points at.
+#
+# Repo secrets required:
+#   SIGNING_KEYSTORE_B64 — base64 of signing/nyora.keystore (stable signing key)
+#   PUBLISHER_TOKEN      — a PAT with Contents:write on Nyora-Manga/nyora-mihon
+on:
+  push:
+    branches: [deploy]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nyora-mihon
+  cancel-in-progress: true
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Restore signing keystore
+        run: |
+          mkdir -p signing
+          echo "${{ secrets.SIGNING_KEYSTORE_B64 }}" | base64 -d > signing/nyora.keystore
+          test -s signing/nyora.keystore
+
+      - name: Build both flavors (fetch nyora-shared + mihon, generate repo/)
+        run: bash scripts/build.sh
+
+      - name: Publish to Nyora-Manga/nyora-mihon
+        env:
+          TOKEN: ${{ secrets.PUBLISHER_TOKEN }}
+        run: |
+          set -e
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/Nyora-Manga/nyora-mihon.git" pub
+          cp -f repo/index.min.json repo/repo.json pub/
+          mkdir -p pub/apk pub/icon
+          cp -f repo/apk/*.apk pub/apk/
+          cp -f repo/icon/*.png pub/icon/
+          cd pub
+          git config user.name hasan72341
+          git config user.email hasan72341@users.noreply.github.com
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no changes to publish"; exit 0
+          fi
+          V=$(python3 -c "import json;d=json.load(open('index.min.json'))[0];print(d['name'],'v'+d['version'],'code',d['code'])")
+          git commit -m "publish: $V"
+          git push origin main
+
+      - name: Verify live index
+        run: |
+          sleep 5
+          code=$(curl -s --max-time 20 "https://api.github.com/repos/Nyora-Manga/nyora-mihon/contents/index.min.json" \
+            -H "Authorization: Bearer ${{ secrets.PUBLISHER_TOKEN }}" | \
+            python3 -c "import json,sys,base64; c=json.load(sys.stdin)['content']; d=json.loads(base64.b64decode(c))[0]; print(d['code'])")
+          echo "published index code: $code"
