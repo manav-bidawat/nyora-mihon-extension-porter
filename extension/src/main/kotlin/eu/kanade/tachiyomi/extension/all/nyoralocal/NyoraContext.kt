@@ -36,6 +36,20 @@ import java.util.concurrent.ConcurrentHashMap
 object RedirectDomainMapper : Interceptor {
     private val liveHost = ConcurrentHashMap<String, String>()
 
+    /**
+     * Statically pin an old→new host rewrite (compiled-in, NOT learned from a
+     * live redirect). Seeded from SourcePatches.DOMAIN_OVERRIDES so a moved
+     * source's requests hit the new host deterministically — no reliance on the
+     * parser honoring ConfigKey.Domain or on a redirect happening at runtime.
+     */
+    fun pin(oldHost: String, newHost: String) {
+        if (oldHost.isNotBlank() && newHost.isNotBlank() && oldHost != newHost) {
+            liveHost[oldHost] = newHost
+            liveHost[oldHost.removePrefix("www.")] = newHost
+            liveHost["www.$oldHost"] = newHost
+        }
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         var request = chain.request()
         val requestedHost = request.url.host
@@ -175,7 +189,15 @@ class NyoraContext(baseClient: OkHttpClient) : MangaLoaderContext() {
     ) : MangaSourceConfig {
         @Suppress("UNCHECKED_CAST")
         override fun <T> get(key: ConfigKey<T>): T = when (key) {
-            is ConfigKey.Domain -> (SourcePatches.DOMAIN_OVERRIDES[source.name] ?: key.defaultValue) as T
+            is ConfigKey.Domain -> {
+                val override = SourcePatches.DOMAIN_OVERRIDES[source.name]
+                if (override != null) {
+                    // Hard-pin old→new at the request level (compiled-in), so even a
+                    // parser that ignores this config value still hits the live host.
+                    RedirectDomainMapper.pin(key.defaultValue, override)
+                }
+                (override ?: key.defaultValue) as T
+            }
             // Match the WebView UA so Cloudflare cf_clearance solved there is honored.
             is ConfigKey.UserAgent -> userAgent as T
             else -> key.defaultValue
