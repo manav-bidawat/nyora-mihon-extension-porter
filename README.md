@@ -1,50 +1,85 @@
-# nyora-mihon-local
+# nyora-mihon-extension-porter
 
-Build pipeline for the **fully-local** Nyora Mihon/Tachiyomi extension — the one
-that bundles the kotatsu-parsers engine and parses **on-device** (no server),
-published to [`Nyora-Manga/nyora-mihon`](https://github.com/Nyora-Manga/nyora-mihon)
-as two extensions:
+Build pipeline that **creates** the fully-local Nyora extension for
+[Mihon](https://mihon.app) / Tachiyomi — it bundles the native
+[kotatsu-parsers](https://github.com/kotatsu-redo/kotatsu-parsers-redo) engine and
+parses **on-device** (no server). This is the **creator**; the built artifacts are
+published to the store repo [`Nyora-Manga/nyora-mihon`](https://github.com/Nyora-Manga/nyora-mihon),
+which Mihon points at.
 
-| Extension | pkg | nsfw | contents |
-|---|---|---|---|
-| **Nyora-Sources** | `…nyoralocal`   | 0 | SFW sources only |
-| **Nyora-Sources 18+** | `…nyoralocal18` | 1 | all sources incl. adult |
+It produces two extensions:
 
-## Why this repo exists
+| Extension | package | contents |
+|---|---|---|
+| **Nyora-Sources** | `…extension.all.nyoralocal` | SFW sources |
+| **Nyora-Sources 18+** | `…extension.all.nyoralocal18` | adult sources |
 
-The original build lived only in an ephemeral scratchpad and was lost; only the
-one-off porting scripts survived (kept in [`legacy-port-scripts/`](./legacy-port-scripts)
-for reference — do **not** run them, they were trial-and-error).
+## How it works
 
-This is the **usable, reproducible** replacement — an extension **creator**, not
-a Mihon fork:
+This is an extension **creator, not a Mihon fork**. `scripts/build.sh`:
 
-- It borrows the public Source API + `mihonx` build plugins from **official
-  upstream Mihon** at build time (a throwaway `git clone`; nothing forked or
-  maintained), and builds **only** `:nyora-local-extension` — never the app.
-- It **links the engine + fixes to `nyora-shared`** (the same stack the hosted
-  helper is built from), so the extension automatically inherits every fix —
-  MangaLib headers, MangaEclipse URL absolutization, the parser-Interceptor
-  binding, etc. — with no manual porting.
+1. **Clones `Nyora-Manga/nyora-shared`** and vendors the shared glue into the module:
+   the `*Lib` header fix (`LibApiHeaders.kt`) and `SourcePatches.kt`
+   (`DOMAIN_OVERRIDES` / `TITLE_OVERRIDES` / `DEAD_SOURCES`). So domain moves,
+   rebrands and dead-source pruning flow in automatically on every build.
+2. **Clones upstream Mihon** (`v0.20.1`, throwaway) — only for its public Source API
+   + `mihonx` build plugins. Builds **only** `:nyora-local-extension`, never the app.
+3. **Assembles + signs** both flavors with the stable key (`signing/nyora.keystore`),
+   then runs `scripts/generate-repo.py` to emit `repo/`.
 
-## Build inputs (all pinned / fetched)
+**Engine:** `com.github.clquwu:kotatsu-parsers-redo` — the ref is read from
+`nyora-shared` at build time, so the extension's sources always match the web/helper.
 
-- **Engine:** `com.github.clquwu:kotatsu-parsers-redo:59c033ecfd` (Gradle dep — same ref as helper + android)
-- **Glue + fixes:** cloned from `Nyora-Manga/nyora-shared` at build time (`NYORA_SHARED_REF`, default `main`):
-  `net/LibApiHeaders.kt`, `net/BrowserHeaders.kt`, `net/HelperNetworkSettings.kt`,
-  `extension/KotatsuLoaderContext.kt`, `extension/KotatsuParserExtensionService.kt`, `extension/NativeParserCatalog.kt`
-- **Android bridge:** an on-device `MangaLoaderContext` (OkHttp + Jsoup; `evaluateJs`/Bitmap stubbed — Cloudflare/JS sources need a WebView, not yet wired) modelled on `nyora-android`.
-- **Source list:** the helper catalog (`GET https://api.hasanraza.tech/sources/catalog`) split by `isNsfw` for the two flavors.
+**Sources:** every `MangaParserSource` **minus** `SourcePatches.DEAD_SOURCES`
+(health-probed — DNS-dead/parked hidden, Cloudflare-protected kept), split by content
+type into the two flavors, **plus** native ports for sites that moved to a JSON API
+(MangaFire, ToonDex).
 
-## Build
+**Cloudflare:** requests run through Mihon's own `CloudflareInterceptor` (its in-app
+WebView solver). Classic challenges are solved there; managed/Turnstile challenges
+that bind clearance to the browser fingerprint are a known limitation of an
+OkHttp-based extension.
+
+## Build locally
 
 ```sh
-scripts/build.sh                 # both flavors, default NYORA_SHARED_REF=main
-NYORA_SHARED_REF=<sha> scripts/build.sh
+scripts/build.sh
+# overrides:
+NYORA_SHARED_REF=<sha> MIHON_REF=<tag> scripts/build.sh
 ```
 
-Outputs `repo/{apk,icon,index.min.json,repo.json}`, ready to push to `nyora-mihon`.
+Requires the Android SDK (`ANDROID_HOME`) and `signing/nyora.keystore` (gitignored).
+Outputs `repo/{apk,icon,index.min.json,repo.json}`.
 
-> **Status:** pipeline + glue wiring is in place; the Android extension module
-> (`extension/`) is a standard Tachiyomi-extension Gradle build and needs the
-> usual build-iteration on a machine with the Android SDK. See `scripts/build.sh`.
+## Publish (CI/CD)
+
+Push to the **`deploy`** branch → GitHub Actions
+([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) builds + signs both
+flavors, **verifies the signing fingerprint** matches the trusted key (so Mihon's
+repo auto-trust can't silently break), and publishes `repo/` to `Nyora-Manga/nyora-mihon`.
+
+```sh
+git commit -am "…"       # on master
+git branch -f deploy master && git push origin deploy   # → build → sign → publish
+```
+
+Repo secrets:
+
+| Secret | Purpose |
+|---|---|
+| `SIGNING_KEYSTORE_B64` | base64 of the stable signing key (cert SHA-256 `8321e917…306d0f1` → Mihon repo auto-trust) |
+| `PUBLISHER_TOKEN` | Contents:write on `Nyora-Manga/nyora-mihon` |
+
+Bump `versionCode`/`versionName` in `extension/build.gradle.kts` **and** `VERSION`/`VERSION_CODE`
+in `scripts/generate-repo.py` together so Mihon offers the update.
+
+## Layout
+
+```
+extension/                the Tachiyomi extension module (kotatsu-parsers bridge)
+scripts/build.sh          the build pipeline
+scripts/generate-repo.py  emits index.min.json + repo.json (fingerprint auto-detected)
+signing/                  stable signing key (gitignored)
+repo/                     build output, published to nyora-mihon
+legacy-port-scripts/      early one-off scripts — reference only, do not run
+```
