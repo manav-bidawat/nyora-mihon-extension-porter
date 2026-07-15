@@ -2,12 +2,16 @@ name: Deploy → nyora-mihon
 
 # Pushing to the `deploy` branch builds both extension flavors from source
 # (build.sh clones nyora-shared for the vendored glue + upstream Mihon for the
-# build API, then assembles + signs the APKs) and publishes the result to the
-# Nyora-Manga/nyora-mihon extension-store repo that Mihon points at.
+# build API, then assembles + signs the APKs with the STABLE signing key), verifies
+# the signing fingerprint (so Mihon repo auto-trust never silently breaks), and
+# publishes the result to the Nyora-Manga/nyora-mihon extension-store repo that
+# Mihon points at.
 #
 # Repo secrets required:
-#   SIGNING_KEYSTORE_B64 — base64 of signing/nyora.keystore (stable signing key)
-#   PUBLISHER_TOKEN      — a PAT with Contents:write on Nyora-Manga/nyora-mihon
+#   SIGNING_KEYSTORE_B64 — base64 of signing/nyora.keystore (the STABLE signing key
+#                          whose cert SHA-256 == TRUSTED_FINGERPRINT below; this is
+#                          what makes repo-installed extensions auto-trust in Mihon)
+#   PUBLISHER_TOKEN      — a (fine-grained) PAT with Contents:write on Nyora-Manga/nyora-mihon
 on:
   push:
     branches: [deploy]
@@ -16,6 +20,11 @@ on:
 concurrency:
   group: deploy-nyora-mihon
   cancel-in-progress: true
+
+env:
+  # The trusted signing-cert SHA-256. Mihon auto-trusts repo-installed extensions
+  # whose APK cert matches the repo.json `signingKeyFingerprint`; both MUST equal this.
+  TRUSTED_FINGERPRINT: "8321e917421dc8b1a68d6a2d4d6a858856382f81d6ccdc209f5122276306d0f1"
 
 jobs:
   build-publish:
@@ -38,6 +47,24 @@ jobs:
 
       - name: Build both flavors (fetch nyora-shared + mihon, generate repo/)
         run: bash scripts/build.sh
+
+      - name: Verify signing fingerprint == trusted key (repo auto-trust guard)
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(ls "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | sort -V | tail -1)"
+          echo "using: $APKSIGNER"
+          repo_fp="$(python3 -c "import json;print(json.load(open('repo/repo.json'))['meta']['signingKeyFingerprint'])")"
+          if [ "$repo_fp" != "$TRUSTED_FINGERPRINT" ]; then
+            echo "::error::repo.json signingKeyFingerprint ($repo_fp) != trusted ($TRUSTED_FINGERPRINT)"; exit 1
+          fi
+          for apk in repo/apk/*.apk; do
+            fp="$("$APKSIGNER" verify --print-certs "$apk" | grep -i 'SHA-256' | head -1 | grep -oE '[0-9a-f]{64}')"
+            echo "$apk -> $fp"
+            if [ "$fp" != "$TRUSTED_FINGERPRINT" ]; then
+              echo "::error::$apk signed with $fp, expected trusted $TRUSTED_FINGERPRINT — Mihon would NOT auto-trust it"; exit 1
+            fi
+          done
+          echo "all APKs + repo.json match the trusted signing key"
 
       - name: Publish to Nyora-Manga/nyora-mihon
         env:
