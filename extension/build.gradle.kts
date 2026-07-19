@@ -19,8 +19,14 @@ android {
 
     defaultConfig {
         applicationId = "eu.kanade.tachiyomi.extension.all.nyora$nyoraPkgSuffix"
-        versionCode = 18
-        versionName = "1.7.12"
+        versionCode = 19
+        // CONTRACT: versionName MUST be "<extensionLib>.<patch>" (here lib 1.6,
+        // matching the `tachiyomix.extensionLib` manifest float). Mihon derives the
+        // repo extension's libVersion as versionName.substringBeforeLast('.') and
+        // flags an update when repo libVersion > installed libVersion — a scheme like
+        // "1.7.12" (lib→1.7 > 1.6) makes the update badge stick FOREVER. See
+        // mihon ExtensionManager.updateExists / NetworkLegacyExtension.libVersion.
+        versionName = "1.6.19"
         buildConfigField("String", "NYORA_NAME", "\"$nyoraName\"")
         buildConfigField("String", "NYORA_LIST", "\"$nyoraList\"")
         buildConfigField("boolean", "NYORA_NSFW", (nyoraNsfw != "0").toString())

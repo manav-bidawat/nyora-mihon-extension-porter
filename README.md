@@ -70,8 +70,11 @@ Repo secrets:
 | `SIGNING_KEYSTORE_B64` | base64 of the stable signing key (cert SHA-256 `8321e917…306d0f1` → Mihon repo auto-trust) |
 | `PUBLISHER_TOKEN` | Contents:write on `Nyora-Manga/nyora-mihon` |
 
-Bump `versionCode`/`versionName` in `extension/build.gradle.kts` **and** `VERSION`/`VERSION_CODE`
-in `scripts/generate-repo.py` together so Mihon offers the update.
+Bump `versionCode`/`versionName` in `extension/build.gradle.kts` so Mihon offers the update
+(`scripts/generate-repo.py` reads both from the built APKs). **Contract:** `versionName` must be
+`"<tachiyomix.extensionLib>.<patch>"` — Mihon derives the repo libVersion as
+`versionName.substringBeforeLast('.')` and flags a *permanent* update if it exceeds the APK's
+manifest `extensionLib` (the generator fails the build on that drift).
 
 ## Layout
 
