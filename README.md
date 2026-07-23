@@ -1,10 +1,12 @@
 # nyora-mihon-extension-porter
 
 Build pipeline that **creates** the fully-local Nyora extension for
-[Mihon](https://mihon.app) / Tachiyomi — it bundles the native
+[Mihon](https://mihon.app) — it bundles the
 [kotatsu-parsers](https://github.com/kotatsu-redo/kotatsu-parsers-redo) engine and
-parses **on-device** (no server). This is the **creator**; the built artifacts are
-published to the store repo [`Nyora-Manga/nyora-mihon`](https://github.com/Nyora-Manga/nyora-mihon),
+parses **on-device** (no server). Source definitions are published through
+[nyora-data-driven](https://github.com/Nyora-Manga/nyora-data-driven). This is the
+**creator**; the built artifacts are published to the store repo
+[`Nyora-Manga/nyora-mihon`](https://github.com/Nyora-Manga/nyora-mihon),
 which Mihon points at.
 
 It produces two extensions:
@@ -28,7 +30,8 @@ This is an extension **creator, not a Mihon fork**. `scripts/build.sh`:
    then runs `scripts/generate-repo.py` to emit `repo/`.
 
 **Engine:** `com.github.clquwu:kotatsu-parsers-redo` — the ref is read from
-`nyora-shared` at build time, so the extension's sources always match the web/helper.
+`nyora-shared` at build time, so the extension's sources always match the web/helper
+and the [nyora-data-driven](https://github.com/Nyora-Manga/nyora-data-driven) catalogue.
 
 **Sources:** every `MangaParserSource` **minus** `SourcePatches.DEAD_SOURCES`
 (health-probed — DNS-dead/parked hidden, Cloudflare-protected kept), split by content
